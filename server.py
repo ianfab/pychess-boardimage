@@ -113,6 +113,8 @@ class Service:
 
     async def render_png(self, request):
         svg_data = self.make_svg(request)
+        if isinstance(svg_data, str):
+            svg_data = svg_data.encode("utf-8")
         png_data = cairosvg.svg2png(bytestring=svg_data)
         return aiohttp.web.Response(body=png_data, content_type="image/png")
 

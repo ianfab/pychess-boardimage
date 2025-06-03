@@ -1,7 +1,6 @@
 import pychess
 import math
 import os
-from os.path import expanduser
 from typing import Dict, Tuple, Union
 
 import svgutils
@@ -225,6 +224,15 @@ def piece(css, piece, size=None):
     return SvgWrapper(ET.tostring(svg).decode("utf-8"))
 
 
+def _colors_to_css(colors: Dict[str, str]) -> str:
+    """Convert a color mapping dictionary into a CSS string."""
+    lines = []
+    for selector, value in colors.items():
+        classes = "." + ".".join(selector.split())
+        lines.append(f"{classes} {{ fill: {value}; }}")
+    return "\n".join(lines)
+
+
 def board(css, board=None, orientation=True, flipped=False, check=None, lastmove=None, arrows=(), squares=None, width=None, height=None, colors=None, coordinates=False, borders=False, background_image=None):
     orientation ^= flipped
     inner_border = 1 if borders and coordinates else 0
@@ -234,7 +242,7 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
 
     svg = _svg(board.cols * SQUARE_SIZE, board.rows * SQUARE_SIZE, width, height)
     if colors:
-        ET.SubElement(svg, "style").text = str(colors)
+        ET.SubElement(svg, "style").text = _colors_to_css(colors)
 
     if lastmove:
         lastmove_from = (board.rows - square_rank(lastmove.from_square) - 1, square_file(lastmove.from_square))
