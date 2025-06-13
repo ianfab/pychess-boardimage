@@ -340,11 +340,17 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
     if render_squares:
         for y_index in range(board.rows):
             for x_index in range(board.cols):
+                if orientation:
+                    display_row = y_index
+                    display_col = x_index
+                else:
+                    display_row = board.rows - y_index - 1
+                    display_col = board.cols - x_index - 1
                 x = (x_index) * SQUARE_SIZE + margin
                 y = (y_index) * SQUARE_SIZE + margin
 
-                cls = ["square", "light" if x_index % 2 == y_index % 2 else "dark"]
-                if lastmove and (y_index, x_index) in (lastmove_from, lastmove_to):
+                cls = ["square", "light" if display_col % 2 == display_row % 2 else "dark"]
+                if lastmove and (display_row, display_col) in (lastmove_from, lastmove_to):
                     cls.append("lastmove")
                 fill_color = DEFAULT_COLORS[" ".join(cls)]
 
@@ -359,7 +365,7 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
                 })
 
                 # Render selected squares.
-                if (y_index, x_index) in parse_squares(board, squares):
+                if (display_row, display_col) in parse_squares(board, squares):
                     ET.SubElement(svg, "use", _attrs({
                         "href": "#xx",
                         "xlink:href": "#xx",
@@ -371,12 +377,18 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
     if board is not None:
         for y_index in range(board.rows):
             for x_index in range(board.cols):
-                x = (x_index) * SQUARE_SIZE + margin
-                y = (y_index) * SQUARE_SIZE + margin
-                piece = board.piece_at(y_index, x_index)
+                if orientation:
+                    display_row = y_index
+                    display_col = x_index
+                else:
+                    display_row = board.rows - y_index - 1
+                    display_col = board.cols - x_index - 1
+                x = x_index * SQUARE_SIZE + margin
+                y = y_index * SQUARE_SIZE + margin
+                piece = board.piece_at(display_row, display_col)
                 if piece:
                     # Render check mark.
-                    if (check is not None) and check_file_index == x_index and check_rank_index == y_index:
+                    if (check is not None) and check_file_index == display_col and check_rank_index == display_row:
                         ET.SubElement(svg, "rect", _attrs({
                             "x": x,
                             "y": y,
