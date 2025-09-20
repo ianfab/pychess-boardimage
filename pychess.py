@@ -126,10 +126,15 @@ class Board:
         self.pieces = {}
         self.rows = rows
         self.cols = cols
+        self.active_color = WHITE  # Default to white to move
         if board_fen is None:
             self.clear_board()
         else:
             self.set_board_fen(css, board_fen)
+
+    def clear_board(self):
+        self.pieces = {}
+        self.active_color = WHITE
 
     def contains_piece(self, piece_type, color):
         for piece in self.pieces.values():
@@ -144,8 +149,18 @@ class Board:
         if css not in SVG_PIECES:
             get_svg_pieces_from_css(css)
 
-        fen = fen.split()[0].strip()  # Ignore any additional FEN parts
-        rows = fen.split("/")
+        # Parse FEN parts: board, active color, castling, en passant, halfmove, fullmove
+        fen_parts = fen.split()
+        board_fen = fen_parts[0].strip()
+        
+        # Parse active color (second field in FEN)
+        if len(fen_parts) > 1:
+            active_color_char = fen_parts[1].strip()
+            self.active_color = WHITE if active_color_char.lower() == 'w' else BLACK
+        else:
+            self.active_color = WHITE  # Default to white if not specified
+        
+        rows = board_fen.split("/")
 
         # Clear the board.
         self.pieces = {}

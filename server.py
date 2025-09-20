@@ -104,6 +104,13 @@ class Service:
         # Handle rotate_opponent parameter
         rotate_opponent = request.query.get("rotate_opponent", "false").lower() in ["1", "true", "yes"]
 
+        # Handle stm_marker parameter  
+        stm_marker = request.query.get("stm_marker")
+        if stm_marker:
+            stm_marker = stm_marker.lower() in ["1", "true", "yes"]
+        else:
+            stm_marker = None
+
         return pychess_svg.board(
             css,
             board,
@@ -118,6 +125,7 @@ class Service:
             colors=colors,
             background_image=background_image,
             rotate_opponent=rotate_opponent,
+            stm_marker=stm_marker,
         )
 
     async def render_svg(self, request):

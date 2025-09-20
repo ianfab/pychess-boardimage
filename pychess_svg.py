@@ -239,7 +239,27 @@ def get_coord_svg(label, x, y, size, color, opacity=1.0):
     return group
 
 
-def board(css, board=None, orientation=True, flipped=False, check=None, lastmove=None, arrows=(), squares=None, width=None, height=None, colors=None, coordinates=False, borders=False, background_image=None, rotate_opponent=False):
+def create_stm_marker(x, y, size, color, border_color="#000"):
+    """Create an SVG marker indicating side to move."""
+    marker_g = ET.Element("g", {
+        "class": "stm-marker"
+    })
+    
+    # Create filled circle for the marker
+    circle = ET.Element("circle", {
+        "cx": str(x),
+        "cy": str(y),
+        "r": str(size / 2),
+        "fill": color,
+        "stroke": border_color,
+        "stroke-width": str(max(1, size / 10))
+    })
+    marker_g.append(circle)
+    
+    return marker_g
+
+
+def board(css, board=None, orientation=True, flipped=False, check=None, lastmove=None, arrows=(), squares=None, width=None, height=None, colors=None, coordinates=False, borders=False, background_image=None, rotate_opponent=False, stm_marker=None):
     orientation ^= flipped
     inner_border = 1 if borders and coordinates else 0
     outer_border = 1 if borders else 0
@@ -342,10 +362,22 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
     else:
         render_squares = True
 
-    # Adjust SVG viewBox and size to include margin for coordinates
-    if coordinates:
-        total_width = board.cols * SQUARE_SIZE + 2 * margin
-        total_height = board.rows * SQUARE_SIZE + 2 * margin
+    # Adjust SVG viewBox and size to include margin for coordinates and STM marker
+    total_margin = margin if coordinates else 0
+    stm_marker_space = 0
+    
+    # Calculate additional space needed for STM marker
+    if stm_marker and board is not None:
+        marker_size = SQUARE_SIZE // 3
+        marker_margin = 10
+        # Add extra spacing when coordinates are present
+        coordinate_spacing = total_margin if coordinates else 0
+        stm_marker_space = marker_size + marker_margin + coordinate_spacing
+    
+    if coordinates or stm_marker:
+        total_width = board.cols * SQUARE_SIZE + 2 * total_margin + stm_marker_space
+        total_height = board.rows * SQUARE_SIZE + 2 * total_margin
+        
         svg.set("viewBox", f"0 0 {total_width} {total_height}")
         if width is not None:
             svg.set("width", str(total_width))
@@ -532,5 +564,46 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
                 "opacity": opacity if opacity < 1.0 else None,
                 "class": "arrow",
             }))
+
+    # Render side-to-move marker if requested
+    if stm_marker and board is not None:
+        # Determine marker size and spacing
+        marker_size = SQUARE_SIZE // 3
+        marker_margin = 10
+        
+        # Determine which side should be marked based on active color and orientation
+        if hasattr(board, 'active_color'):
+            active_color = board.active_color
+        else:
+            active_color = pychess.WHITE  # Default fallback
+        
+        # Logic for marker placement:
+        # - White to move + normal orientation (not flipped) -> bottom side of board
+        # - White to move + flipped orientation -> top side of board  
+        # - Black to move + normal orientation (not flipped) -> top side of board
+        # - Black to move + flipped orientation -> bottom side of board
+        white_to_move = (active_color == pychess.WHITE)
+        place_at_bottom = (white_to_move and not flipped) or (not white_to_move and flipped)
+        
+        # Calculate marker position - positioned to the right side of board, near top or bottom
+        margin_offset = margin if coordinates else 0
+        # Add extra spacing when coordinates are present to avoid collision with coordinate labels
+        coordinate_spacing = margin if coordinates else 0
+        marker_x = margin_offset + board.cols * SQUARE_SIZE + coordinate_spacing + marker_margin + marker_size // 2
+        
+        if place_at_bottom:
+            # Place marker near bottom of board
+            marker_y = margin_offset + board.rows * SQUARE_SIZE - SQUARE_SIZE // 2
+        else:
+            # Place marker near top of board  
+            marker_y = margin_offset + SQUARE_SIZE // 2
+        
+        # Determine marker colors
+        marker_color = "#ffffff" if active_color == pychess.WHITE else "#000000"
+        border_color = "#000000" if active_color == pychess.WHITE else "#ffffff"
+        
+        # Create and append the marker
+        stm_marker_element = create_stm_marker(marker_x, marker_y, marker_size, marker_color, border_color)
+        svg.append(stm_marker_element)
 
     return SvgWrapper(ET.tostring(svg).decode("utf-8"))
