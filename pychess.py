@@ -126,7 +126,7 @@ class Board:
         self.pieces = {}
         self.rows = rows
         self.cols = cols
-        self.active_color = WHITE  # Default to white to move
+        self.active_color = None  # No default, will be set based on FEN
         if board_fen is None:
             self.clear_board()
         else:
@@ -134,7 +134,7 @@ class Board:
 
     def clear_board(self):
         self.pieces = {}
-        self.active_color = WHITE
+        self.active_color = None
 
     def contains_piece(self, piece_type, color):
         for piece in self.pieces.values():
@@ -158,7 +158,7 @@ class Board:
             active_color_char = fen_parts[1].strip()
             self.active_color = WHITE if active_color_char.lower() == 'w' else BLACK
         else:
-            self.active_color = WHITE  # Default to white if not specified
+            self.active_color = None  # No active color specified in FEN
         
         rows = board_fen.split("/")
 

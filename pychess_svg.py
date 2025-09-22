@@ -572,10 +572,13 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
         marker_margin = 10
         
         # Determine which side should be marked based on active color and orientation
-        if hasattr(board, 'active_color'):
+        if hasattr(board, 'active_color') and board.active_color is not None:
             active_color = board.active_color
         else:
-            active_color = pychess.WHITE  # Default fallback
+            # Fall back to board orientation if no active color specified in FEN
+            # orientation=True means white at bottom (normal), so white to move
+            # orientation=False means black at bottom (flipped), so black to move  
+            active_color = pychess.WHITE if orientation else pychess.BLACK
         
         # Logic for marker placement:
         # - White to move + normal orientation (not flipped) -> bottom side of board
