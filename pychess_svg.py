@@ -287,6 +287,25 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
         check_rank_index = board.rows - square_rank(check) - 1
         check_file_index = square_file(check)
 
+    # Normalize stm_marker parameter early: True -> "right", False/None -> None, "left"/"right" -> as-is
+    stm_side = None
+    if stm_marker is True:
+        stm_side = "right"
+    elif stm_marker in ("left", "right"):
+        stm_side = stm_marker
+    elif stm_marker:
+        # For any other truthy value, default to right
+        stm_side = "right"
+    
+    # Calculate additional space needed for STM marker
+    stm_marker_space = 0
+    if stm_side and board is not None:
+        marker_size = SQUARE_SIZE // 3
+        marker_margin = 10
+        # Add extra spacing when coordinates are present
+        coordinate_spacing = margin if coordinates else 0
+        stm_marker_space = marker_size + marker_margin + coordinate_spacing
+
     # Render board background image if provided
     if background_image:
         if background_image.lower().endswith('.svg'):
@@ -325,7 +344,9 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
                         bg_group.append(elem)
                     scale_x = (board.cols * SQUARE_SIZE) / width_val
                     scale_y = (board.rows * SQUARE_SIZE) / height_val
-                    bg_group.set('transform', f'translate({margin}, {margin}) scale({scale_x}, {scale_y})')
+                    # Account for STM marker space in positioning
+                    stm_offset = stm_marker_space if stm_side else 0
+                    bg_group.set('transform', f'translate({margin + stm_offset}, {margin}) scale({scale_x}, {scale_y})')
                     svg.insert(1, bg_group)
                 else:
                     # fallback: insert as a group
@@ -348,9 +369,11 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
                 else:
                     mime = 'application/octet-stream'
                 data_uri = f"data:{mime};base64," + base64.b64encode(img_bytes).decode('ascii')
+                # Account for STM marker space in positioning
+                stm_offset = stm_marker_space if stm_side else 0
                 ET.SubElement(svg, "image", {
                     "{http://www.w3.org/1999/xlink}href": data_uri,
-                    "x": str(margin),
+                    "x": str(margin + stm_offset),
                     "y": str(margin),
                     "width": str(board.cols * SQUARE_SIZE),
                     "height": str(board.rows * SQUARE_SIZE),
@@ -364,18 +387,10 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
 
     # Adjust SVG viewBox and size to include margin for coordinates and STM marker
     total_margin = margin if coordinates else 0
-    stm_marker_space = 0
     
-    # Calculate additional space needed for STM marker
-    if stm_marker and board is not None:
-        marker_size = SQUARE_SIZE // 3
-        marker_margin = 10
-        # Add extra spacing when coordinates are present
-        coordinate_spacing = total_margin if coordinates else 0
-        stm_marker_space = marker_size + marker_margin + coordinate_spacing
-    
-    if coordinates or stm_marker:
-        total_width = board.cols * SQUARE_SIZE + 2 * total_margin + stm_marker_space
+    if coordinates or stm_side:
+        # Add STM marker space to both sides to keep board centered
+        total_width = board.cols * SQUARE_SIZE + 2 * total_margin + 2 * stm_marker_space
         total_height = board.rows * SQUARE_SIZE + 2 * total_margin
         
         svg.set("viewBox", f"0 0 {total_width} {total_height}")
@@ -394,7 +409,7 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
                 else:
                     display_row = board.rows - y_index - 1
                     display_col = board.cols - x_index - 1
-                x = (x_index) * SQUARE_SIZE + (margin if coordinates else 0)
+                x = (x_index) * SQUARE_SIZE + (margin if coordinates else 0) + (stm_marker_space if stm_side else 0)
                 y = (y_index) * SQUARE_SIZE + (margin if coordinates else 0)
 
                 cls = ["square", "light" if display_col % 2 == display_row % 2 else "dark"]
@@ -426,11 +441,13 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
         coord_size = int(margin * 1.1)
         text_color = DEFAULT_COLORS["coord"]
         offset = 7
+        # Account for STM marker space in coordinate positioning
+        stm_offset = stm_marker_space if stm_side else 0
         # Center coordinates in the margin area for files (bottom/top)
         for file_index in range(board.cols):
             index = file_index if orientation else board.cols - file_index - 1
             file_char = pychess.COORDS[coordinates][0](index, board.cols)
-            x = file_index * SQUARE_SIZE + margin + SQUARE_SIZE // 2 - coord_size // 2 + offset
+            x = file_index * SQUARE_SIZE + margin + stm_offset + SQUARE_SIZE // 2 - coord_size // 2 + offset
             y_top = margin // 2 - coord_size // 2 + offset
             y_bottom = margin + board.rows * SQUARE_SIZE + margin // 2 - coord_size // 2 + offset
             for y in (y_top, y_bottom):
@@ -442,8 +459,8 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
             index = rank_index if orientation else board.rows - rank_index - 1
             rank_char = pychess.COORDS[coordinates][1](index, board.rows)
             y = rank_index * SQUARE_SIZE + margin + SQUARE_SIZE // 2 - coord_size // 2 + offset
-            x_left = margin // 2 - coord_size // 2 + offset
-            x_right = margin + board.cols * SQUARE_SIZE + margin // 2 - coord_size // 2 + offset
+            x_left = margin // 2 + stm_offset - coord_size // 2 + offset
+            x_right = margin + stm_offset + board.cols * SQUARE_SIZE + margin // 2 - coord_size // 2 + offset
             for x in (x_left, x_right):
                 coord_g = get_coord_svg(rank_char, x, y, coord_size, text_color)
                 if coord_g is not None:
@@ -458,7 +475,7 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
                 else:
                     display_row = board.rows - y_index - 1
                     display_col = board.cols - x_index - 1
-                x = x_index * SQUARE_SIZE + (margin if coordinates else 0)
+                x = x_index * SQUARE_SIZE + (margin if coordinates else 0) + (stm_marker_space if stm_side else 0)
                 y = y_index * SQUARE_SIZE + (margin if coordinates else 0)
                 piece = board.piece_at(display_row, display_col)
                 if piece:
@@ -511,9 +528,9 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
         x_corr = board.cols - 0.5
         y_corr = board.rows - 0.5
 
-        xtail = outer_border + (margin if coordinates else 0) + inner_border + (tail_file + 0.5 if orientation else x_corr - tail_file) * SQUARE_SIZE
+        xtail = outer_border + (margin if coordinates else 0) + (stm_marker_space if stm_side else 0) + inner_border + (tail_file + 0.5 if orientation else x_corr - tail_file) * SQUARE_SIZE
         ytail = outer_border + (margin if coordinates else 0) + inner_border + (y_corr - tail_rank if orientation else tail_rank + 0.5) * SQUARE_SIZE
-        xhead = outer_border + (margin if coordinates else 0) + inner_border + (head_file + 0.5 if orientation else x_corr - head_file) * SQUARE_SIZE
+        xhead = outer_border + (margin if coordinates else 0) + (stm_marker_space if stm_side else 0) + inner_border + (head_file + 0.5 if orientation else x_corr - head_file) * SQUARE_SIZE
         yhead = outer_border + (margin if coordinates else 0) + inner_border + (y_corr - head_rank if orientation else head_rank + 0.5) * SQUARE_SIZE
 
         if (head_file, head_rank) == (tail_file, tail_rank):
@@ -566,7 +583,7 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
             }))
 
     # Render side-to-move marker if requested
-    if stm_marker and board is not None:
+    if stm_side and board is not None:
         # Determine marker size and spacing
         marker_size = SQUARE_SIZE // 3
         marker_margin = 10
@@ -588,11 +605,17 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
         white_to_move = (active_color == pychess.WHITE)
         place_at_bottom = (white_to_move and not flipped) or (not white_to_move and flipped)
         
-        # Calculate marker position - positioned to the right side of board, near top or bottom
+        # Calculate marker position
         margin_offset = margin if coordinates else 0
         # Add extra spacing when coordinates are present to avoid collision with coordinate labels
         coordinate_spacing = margin if coordinates else 0
-        marker_x = margin_offset + board.cols * SQUARE_SIZE + coordinate_spacing + marker_margin + marker_size // 2
+        
+        if stm_side == "left":
+            # Place marker on the left side of board, in the allocated STM marker space
+            marker_x = marker_margin + marker_size // 2
+        else:  # stm_side == "right"
+            # Place marker on the right side of board  
+            marker_x = margin_offset + stm_marker_space + board.cols * SQUARE_SIZE + coordinate_spacing + marker_margin + marker_size // 2
         
         if place_at_bottom:
             # Place marker near bottom of board

@@ -104,10 +104,18 @@ class Service:
         # Handle rotate_opponent parameter
         rotate_opponent = request.query.get("rotate_opponent", "false").lower() in ["1", "true", "yes"]
 
-        # Handle stm_marker parameter  
-        stm_marker = request.query.get("stm_marker")
-        if stm_marker:
-            stm_marker = stm_marker.lower() in ["1", "true", "yes"]
+        # Handle stm_marker parameter - support "left", "right", True, False
+        stm_marker_param = request.query.get("stm_marker")
+        if stm_marker_param:
+            stm_marker_lower = stm_marker_param.lower()
+            if stm_marker_lower in ["left"]:
+                stm_marker = "left"
+            elif stm_marker_lower in ["right"]:
+                stm_marker = "right"
+            elif stm_marker_lower in ["1", "true", "yes"]:
+                stm_marker = True  # Will default to "right" in pychess_svg
+            else:
+                stm_marker = None
         else:
             stm_marker = None
 
