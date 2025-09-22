@@ -423,9 +423,9 @@ def board(css, board=None, orientation=True, flipped=False, check=None, lastmove
 
     # Render coordinates using SVG path glyphs for robustness
     if coordinates:
-        coord_size = int(margin * 0.9)
+        coord_size = int(margin * 1.1)
         text_color = DEFAULT_COLORS["coord"]
-        offset = 5
+        offset = 7
         # Center coordinates in the margin area for files (bottom/top)
         for file_index in range(board.cols):
             index = file_index if orientation else board.cols - file_index - 1
